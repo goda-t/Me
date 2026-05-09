@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>診断・占いガイド一覧 | Me — あなただけのキャラ生成</title>
+<meta name="description" content="MBTI・血液型・骨格診断・パーソナルカラー・四柱推命・タロット…世界中の診断・占いを網羅したガイド集。各診断の特徴・仕組み・活用法を解説します。">
+<style>
+
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Syne:wght@400;700;800&display=swap');
+  :root {
+    --ink: #0d0d0d;
+    --paper: #f5f0e8;
+    --accent: #e8451a;
+    --accent2: #1a3ae8;
+    --muted: #888;
+    --card: #fff;
+    --pink: #ff6b9d;
+    --mint: #1abc9c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Syne', 'Zen Kaku Gothic New', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,0,0,.04) 39px,rgba(0,0,0,.04) 40px),
+      repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,0,0,.04) 39px,rgba(0,0,0,.04) 40px);
+    pointer-events: none; z-index: 0;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* Nav */
+  nav {
+    border-bottom: 3px solid var(--ink);
+    padding: 16px 0;
+    background: var(--paper);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 24px; }
+  .nav-logo { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; text-decoration: none; color: var(--ink); letter-spacing: -1px; }
+  .nav-logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 20px; margin-left: auto; }
+  .nav-links a { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; color: var(--muted); transition: color .15s; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta { background: var(--ink); color: var(--paper) !important; padding: 7px 16px; }
+  .nav-cta:hover { background: var(--accent); color: var(--paper) !important; }
+
+  /* Footer */
+  footer { border-top: 3px solid var(--ink); padding: 32px 0; margin-top: 80px; }
+  .footer-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .footer-logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
+  .footer-logo span { color: var(--accent); }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; letter-spacing: .08em; }
+  .footer-links a:hover { color: var(--ink); }
+  .footer-copy { font-size: 11px; color: var(--muted); letter-spacing: .05em; }
+
+  .page-hero {
+    padding: 64px 0 40px;
+    border-bottom: 3px solid var(--ink);
+  }
+  .page-hero h1 { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 16px; }
+  .page-hero h1 span { color: var(--accent); }
+  .page-hero p { font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 560px; font-family: 'Zen Kaku Gothic New', sans-serif; }
+  .count-badge {
+    display: inline-block;
+    border: 1.5px solid var(--ink);
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    padding: 4px 14px; margin-bottom: 20px;
+    background: var(--ink); color: var(--paper);
+  }
+
+  .cat-section { padding: 40px 0; border-bottom: 1px solid rgba(0,0,0,.1); }
+  .cat-section:last-child { border-bottom: none; }
+  .cat-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .cat-label::after { content: ''; flex: 1; height: 1px; background: var(--muted); opacity: .3; }
+
+  .diag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .diag-card {
+    border: 1.5px solid var(--ink);
+    background: var(--card);
+    padding: 18px 20px;
+    text-decoration: none;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: all .15s;
+    position: relative;
+  }
+  .diag-card:hover { background: var(--ink); color: var(--paper); }
+  .diag-card:hover .diag-card-tagline { color: rgba(255,255,255,.6); }
+  .diag-card:hover .diag-card-arrow { color: var(--accent); }
+  .diag-card-emoji { font-size: 28px; }
+  .diag-card-name { font-size: 14px; font-weight: 700; letter-spacing: .02em; line-height: 1.3; }
+  .diag-card-tagline { font-size: 12px; color: var(--muted); line-height: 1.5; font-family: 'Zen Kaku Gothic New', sans-serif; flex: 1; }
+  .diag-card-arrow { font-size: 16px; font-weight: 700; color: var(--accent); margin-top: 8px; }
+
+  .cta-banner {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 40px 48px;
+    margin: 48px 0;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .cta-banner-text h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+  .cta-banner-text p { font-size: 14px; opacity: .7; font-family: 'Zen Kaku Gothic New', sans-serif; line-height: 1.6; }
+  .cta-banner-btn {
+    flex-shrink: 0;
+    background: var(--accent); color: #fff;
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800;
+    letter-spacing: .1em; text-transform: uppercase;
+    padding: 14px 32px; text-decoration: none; border: 3px solid var(--accent);
+    transition: opacity .15s; white-space: nowrap;
+  }
+  .cta-banner-btn:hover { opacity: .85; }
+
+  @media(max-width:600px) {
+    .page-hero h1 { font-size: 28px; }
+    .diag-grid { grid-template-columns: 1fr 1fr; }
+    .cta-banner { flex-direction: column; padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="../index.html">M<span>e</span></a>
+    <div class="nav-links">
+      <a href="./index.html">診断ガイド</a>
+      <a href="../index.html" class="nav-cta">キャラを作る →</a>
+    </div>
+  </div>
+</nav>
+<div class="wrap">
+  <div class="page-hero">
+    <div class="count-badge">19 DIAGNOSES</div>
+    <h1>診断・占い<br><span>ガイド</span></h1>
+    <p>MBTI・血液型・骨格診断・パーソナルカラーから四柱推命・タロット・マヤ暦まで。世界中の診断と占いを網羅した解説ガイドです。各診断の特徴・仕組みを理解して、Meでのキャラ生成に役立てましょう。</p>
+  </div>
+
+  
+    <section class="cat-section">
+      <div class="cat-label">性格・心理</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./mbti.html">
+        <div class="diag-card-emoji">🧠</div>
+        <div class="diag-card-name">MBTI（16Personalities）</div>
+        <div class="diag-card-tagline">16タイプで自分の「思考の型」がわかる</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./enneagram.html">
+        <div class="diag-card-emoji">🔯</div>
+        <div class="diag-card-name">エニアグラム</div>
+        <div class="diag-card-tagline">9つのタイプで「動機」の根本がわかる深層性格診断</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./big5.html">
+        <div class="diag-card-emoji">📊</div>
+        <div class="diag-card-name">ビッグファイブ（Big5）</div>
+        <div class="diag-card-tagline">科学的に最も信頼性が高い5次元の性格モデル</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./strengths.html">
+        <div class="diag-card-emoji">💪</div>
+        <div class="diag-card-name">StrengthsFinder（クリフトンストレングス）</div>
+        <div class="diag-card-tagline">才能を「弱点克服」ではなく「強みの最大化」で活かす</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">性格・占い</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./blood-type.html">
+        <div class="diag-card-emoji">🩸</div>
+        <div class="diag-card-name">血液型診断</div>
+        <div class="diag-card-tagline">A・B・O・ABの4タイプで性格を読む日本独自の文化</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">外見・イメージ</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./skeleton.html">
+        <div class="diag-card-emoji">🦴</div>
+        <div class="diag-card-name">骨格診断</div>
+        <div class="diag-card-tagline">生まれ持った骨格で「似合うスタイル」がわかる</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./personal-color.html">
+        <div class="diag-card-emoji">🎨</div>
+        <div class="diag-card-name">パーソナルカラー診断</div>
+        <div class="diag-card-tagline">生まれ持った色素に似合う色で魅力が3割増しになる</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./face-type.html">
+        <div class="diag-card-emoji">👁️</div>
+        <div class="diag-card-name">顔タイプ診断</div>
+        <div class="diag-card-tagline">顔の印象から似合うファッション・メイクが丸ごとわかる</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">西洋占術</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./zodiac.html">
+        <div class="diag-card-emoji">⭐</div>
+        <div class="diag-card-name">星座占い（西洋占星術）</div>
+        <div class="diag-card-tagline">生年月日が示す天体の配置があなたの本質を語る</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./numerology.html">
+        <div class="diag-card-emoji">🔢</div>
+        <div class="diag-card-name">数秘術（ヌメロロジー）</div>
+        <div class="diag-card-tagline">生年月日の数字に宿る運命のコードを読み解く</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./tarot.html">
+        <div class="diag-card-emoji">🃏</div>
+        <div class="diag-card-name">タロット占い</div>
+        <div class="diag-card-tagline">78枚のカードが映し出す潜在意識と運命のメッセージ</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./rune.html">
+        <div class="diag-card-emoji">⚡</div>
+        <div class="diag-card-name">ルーン占い</div>
+        <div class="diag-card-tagline">北欧の戦士たちが使った古代文字が運命を語る</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">東洋占術</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./kyusei.html">
+        <div class="diag-card-emoji">☯️</div>
+        <div class="diag-card-name">九星気学</div>
+        <div class="diag-card-tagline">古代中国の宇宙観から生まれた9つの星の運命論</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./shichu-suimei.html">
+        <div class="diag-card-emoji">🏮</div>
+        <div class="diag-card-name">四柱推命</div>
+        <div class="diag-card-tagline">生年月日時の4つの柱から読む東洋最高峰の命術</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">古代占術</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./maya.html">
+        <div class="diag-card-emoji">🌀</div>
+        <div class="diag-card-name">マヤ暦</div>
+        <div class="diag-card-tagline">古代マヤ文明の宇宙観から読む魂の使命</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">スピリチュアル</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./aura.html">
+        <div class="diag-card-emoji">✨</div>
+        <div class="diag-card-name">オーラ診断</div>
+        <div class="diag-card-tagline">体のまわりに漂う光のエネルギーが本当の自分を映す</div>
+        <div class="diag-card-arrow">→</div>
+      </a>
+      <a class="diag-card" href="./past-life.html">
+        <div class="diag-card-emoji">🌙</div>
+        <div class="diag-card-name">前世診断</div>
+        <div class="diag-card-tagline">魂が歩んできた過去生が今世の才能と課題に刻まれている</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">外見・占い</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./animal-spirit.html">
+        <div class="diag-card-emoji">🦊</div>
+        <div class="diag-card-name">動物人相・動物キャラ占い</div>
+        <div class="diag-card-tagline">顔の特徴と動物を重ねて性格の本質を読む</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+    <section class="cat-section">
+      <div class="cat-label">西洋占術・神秘学</div>
+      <div class="diag-grid">
+      <a class="diag-card" href="./kabbala.html">
+        <div class="diag-card-emoji">🔯</div>
+        <div class="diag-card-name">カバラ数秘術</div>
+        <div class="diag-card-tagline">ユダヤ神秘主義が解き明かす数字の霊的な意味</div>
+        <div class="diag-card-arrow">→</div>
+      </a></div>
+    </section>
+
+  <div class="cta-banner">
+    <div class="cta-banner-text">
+      <h2>全部の診断結果を<br>1つのキャラに統合しよう</h2>
+      <p>MBTI・血液型・星座・四柱推命…バラバラに持っていた診断結果を<br>AIがまとめて分析して、あなただけのキャラクターを生成します。</p>
+    </div>
+    <a class="cta-banner-btn" href="../index.html">▶ キャラを作る</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">M<span>e</span></div>
+    <div class="footer-links">
+      <a href="../index.html">キャラ生成</a>
+      <a href="./index.html">診断ガイド</a>
+    </div>
+    <div class="footer-copy">© 2026 Me. All rights reserved.</div>
+  </div>
+</footer>
+</body>
+</html>
