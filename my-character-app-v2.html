@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Me — 診断結果からキャラ生成</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0d0d;
+    --paper: #f5f0e8;
+    --accent: #e8451a;
+    --accent2: #1a3ae8;
+    --muted: #888;
+    --border: #0d0d0d;
+    --card: #fff;
+    --pro: #1a3ae8;
+    --pink: #ff6b9d;
+    --purple: #9b59b6;
+    --mint: #1abc9c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Syne', 'Zen Kaku Gothic New', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,0,0,.04) 39px,rgba(0,0,0,.04) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,0,0,.04) 39px,rgba(0,0,0,.04) 40px); pointer-events: none; z-index: 0; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 1; }
+
+  header { border-bottom: 3px solid var(--ink); padding: 24px 0 16px; margin-bottom: 32px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .logo { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .logo span { color: var(--accent); }
+  .tagline { font-size: 11px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; }
+
+  /* Plan banner */
+  .plan-banner { border: 1.5px solid var(--border); background: var(--card); padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 20px; font-size: 13px; flex-wrap: wrap; }
+  .plan-badge { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 3px 10px; border: 1.5px solid; }
+  .plan-badge.free { background: var(--paper); color: var(--muted); border-color: var(--muted); }
+  .plan-badge.pro { background: var(--pro); color: #fff; border-color: var(--pro); }
+  .plan-count { color: var(--muted); font-size: 12px; }
+  .plan-count strong { color: var(--ink); }
+  .upgrade-link { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid var(--accent); cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; padding: 0; }
+
+  /* Pro token */
+  .pro-row { display: none; border: 1.5px solid var(--pro); background: #f0f2ff; margin-bottom: 20px; }
+  .pro-row.show { display: flex; align-items: stretch; }
+  .pro-tag { background: var(--pro); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; padding: 0 12px; display: flex; align-items: center; white-space: nowrap; }
+  .pro-input { flex: 1; border: none; outline: none; padding: 11px 14px; font-family: 'Courier New', monospace; font-size: 12px; background: transparent; color: var(--ink); }
+
+  /* Form */
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--muted); opacity: .3; }
+  .diag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .diag-item { border: 1.5px solid var(--border); background: var(--card); display: flex; align-items: stretch; }
+  .diag-label { background: var(--ink); color: var(--paper); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; writing-mode: vertical-rl; text-orientation: mixed; padding: 8px 5px; display: flex; align-items: center; justify-content: center; min-width: 24px; white-space: nowrap; }
+  .diag-input { flex: 1; border: none; outline: none; padding: 10px 12px; font-family: inherit; font-size: 13px; background: transparent; color: var(--ink); width: 100%; }
+  .diag-input::placeholder { color: #bbb; font-style: italic; }
+  select.diag-input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  select.diag-input option { color: var(--ink); background: #fff; }
+  .input-error { border-bottom: 2px solid var(--accent) !important; }
+  .custom-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .custom-label-input { border: 1.5px solid var(--border); background: var(--card); padding: 10px 12px; font-family: inherit; font-size: 12px; outline: none; width: 140px; font-weight: 700; color: var(--accent2); }
+  .custom-val-input { border: 1.5px solid var(--border); background: var(--card); padding: 10px 12px; font-family: inherit; font-size: 13px; outline: none; flex: 1; color: var(--ink); }
+  .add-btn { border: 1.5px dashed var(--muted); background: transparent; padding: 10px 20px; font-family: inherit; font-size: 12px; cursor: pointer; color: var(--muted); letter-spacing: .05em; transition: all .15s; width: 100%; }
+  .add-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+  .gen-btn { width: 100%; border: 3px solid var(--ink); background: var(--ink); color: var(--paper); font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; padding: 18px; cursor: pointer; transition: all .15s; margin-top: 8px; }
+  .gen-btn:hover { background: var(--accent); border-color: var(--accent); }
+  .gen-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Loading */
+  .loading { display: none; padding: 48px 0; }
+  .loading.show { display: block; }
+  .loading-label { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: .05em; color: var(--ink); text-align: center; margin-bottom: 24px; min-height: 32px; }
+  .progress-wrap { border: 2px solid var(--ink); height: 28px; background: var(--paper); position: relative; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--ink); width: 0%; transition: width .4s cubic-bezier(.16,1,.3,1); }
+  .progress-stripe {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent, transparent 8px,
+      rgba(255,255,255,.12) 8px, rgba(255,255,255,.12) 16px
+    );
+    animation: stripe-move 1s linear infinite;
+  }
+  @keyframes stripe-move { to { background-position: 24px 0; } }
+  .progress-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: .1em; color: #fff; mix-blend-mode: difference; }
+  .loading-phase { text-align: center; margin-top: 12px; font-size: 11px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); min-height: 18px; }
+
+  /* Result */
+  .result { display: none; margin-top: 32px; }
+  .result.show { display: block; animation: reveal .5s ease; }
+  @keyframes reveal { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+  .result-card { border: 3px solid var(--ink); background: var(--card); position: relative; overflow: hidden; }
+  .result-card::before { content: 'Me CHARACTER'; position: absolute; top: 12px; right: -28px; background: var(--accent); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .2em; padding: 4px 40px; }
+
+  .card-header { border-bottom: 3px solid var(--ink); padding: 16px 24px; display: flex; align-items: center; gap: 8px; }
+  .card-num { font-size: 11px; font-weight: 700; letter-spacing: .2em; color: var(--muted); }
+
+  .card-body { display: grid; grid-template-columns: 260px 1fr; min-height: 360px; }
+
+  /* キャラビジュアル */
+  .char-visual { border-right: 3px solid var(--ink); padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; background: var(--paper); }
+  #char-canvas-wrap { width: 180px; height: 220px; position: relative; }
+  #char-canvas-wrap canvas { width: 100%; height: 100%; }
+  .char-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; text-align: center; letter-spacing: -.5px; line-height: 1.2; }
+  .char-archetype { font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); text-align: center; }
+  .char-element { font-size: 22px; text-align: center; }
+
+  .char-info { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .char-desc { font-size: 13px; line-height: 1.8; color: #333; font-family: 'Zen Kaku Gothic New', sans-serif; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-item { }
+  .stat-name { font-size: 9px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .stat-bar-wrap { height: 6px; background: #eee; border: 1px solid #ddd; }
+  .stat-bar { height: 100%; background: var(--ink); transition: width 1s cubic-bezier(.16,1,.3,1); }
+  .stat-bar.pink { background: var(--pink); }
+  .stat-bar.purple { background: var(--purple); }
+  .stat-bar.mint { background: var(--mint); }
+
+  .keywords { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kw { border: 1.5px solid var(--ink); font-size: 10px; font-weight: 700; letter-spacing: .1em; padding: 3px 10px; text-transform: uppercase; }
+  .kw:nth-child(3n+1) { background: var(--ink); color: var(--paper); }
+  .kw:nth-child(3n+2) { background: var(--pink); color: #fff; border-color: var(--pink); }
+  .kw:nth-child(3n) { background: var(--purple); color: #fff; border-color: var(--purple); }
+
+  .compat { font-size: 12px; font-family: 'Zen Kaku Gothic New', sans-serif; line-height: 1.7; padding: 12px; border: 1.5px dashed var(--muted); color: #555; }
+  .compat strong { color: var(--ink); }
+
+  .card-footer { border-top: 3px solid var(--ink); padding: 14px 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .share-preview { flex: 1; font-size: 11px; color: var(--muted); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .char-count { font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .char-count.ok { color: var(--mint); }
+  .char-count.over { color: var(--accent); }
+  .share-btn { border: 2px solid var(--ink); background: transparent; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 8px 14px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .share-btn:hover { background: var(--ink); color: var(--paper); }
+
+  #char-svg-wrap { width: 180px; height: 220px; border: 2px solid var(--ink); background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #char-svg-wrap svg { width: 100%; height: 100%; }
+
+  /* 自己分析セクション */
+  .analysis-section { border-top: 3px solid var(--ink); background: var(--paper); }
+  .analysis-inner { display: grid; grid-template-columns: 1fr 1fr; }
+  .analysis-block { padding: 20px 24px; border-right: 1px solid rgba(0,0,0,.1); border-bottom: 1px solid rgba(0,0,0,.1); }
+  .analysis-block:nth-child(even) { border-right: none; }
+  .analysis-label { font-size: 9px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .analysis-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .analysis-text { font-size: 13px; line-height: 1.85; color: #333; font-family: 'Zen Kaku Gothic New', sans-serif; }
+
+  .error-msg { display: none; border: 2px solid var(--accent); background: #fff8f6; padding: 14px 18px; font-size: 13px; color: var(--accent); margin-top: 16px; font-family: 'Zen Kaku Gothic New', sans-serif; line-height: 1.7; }
+  .error-msg.show { display: block; }
+  .error-msg a { color: var(--accent); font-weight: 700; cursor: pointer; }
+
+  /* Upgrade modal */
+  .modal-bg { display: none; min-height: 400px; background: rgba(0,0,0,.5); align-items: center; justify-content: center; margin: 24px 0; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--card); border: 3px solid var(--ink); padding: 32px; max-width: 440px; width: 100%; }
+  .modal h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; font-family: 'Zen Kaku Gothic New', sans-serif; }
+  .modal-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .modal-plan { border: 1.5px solid var(--border); padding: 14px; cursor: pointer; transition: all .15s; }
+  .modal-plan:hover, .modal-plan.selected { border-color: var(--pro); background: #f0f2ff; }
+  .modal-plan-name { font-size: 14px; font-weight: 700; }
+  .modal-plan-price { font-size: 20px; font-weight: 800; margin: 4px 0; }
+  .modal-plan-price span { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .modal-plan-feat { font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .stripe-btn { width: 100%; background: var(--pro); color: #fff; border: none; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 14px; cursor: pointer; transition: opacity .15s; margin-bottom: 10px; }
+  .stripe-btn:hover { opacity: .85; }
+  .modal-close { background: none; border: none; font-family: inherit; font-size: 12px; color: var(--muted); cursor: pointer; width: 100%; text-align: center; text-decoration: underline; }
+
+  @media(max-width:600px) {
+    .card-body { grid-template-columns: 1fr; }
+    .char-visual { border-right: none; border-bottom: 3px solid var(--ink); }
+    .diag-grid { grid-template-columns: 1fr; }
+    .logo { font-size: 24px; }
+    .modal-plans { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">M<span>e</span></div>
+    <div class="tagline">All your diagnoses → one character</div>
+  </header>
+
+  <!-- Workers URL: 直書き（worker.jsのURLが変わったらここを更新） -->
+
+  <!-- Plan banner -->
+  <div class="plan-banner">
+    <div class="plan-badge free" id="plan-badge">FREE</div>
+    <div class="plan-count" id="plan-count">本日 <strong id="used-count">0</strong> / <strong id="limit-count">3</strong> 回使用</div>
+    <button class="upgrade-link" onclick="showUpgradeModal()">Proにアップグレード →</button>
+  </div>
+
+  <!-- Pro token -->
+  <div class="pro-row" id="pro-row">
+    <div class="pro-tag">PRO TOKEN</div>
+    <input class="pro-input" id="pro-token" type="password" placeholder="Stripeで発行されたトークン..." oninput="savePlan()" />
+  </div>
+
+  <!-- 性別 -->
+  <div style="margin-bottom:16px">
+    <div class="section-label">あなたについて</div>
+    <div class="diag-item" style="max-width:320px">
+      <div class="diag-label">性別</div>
+      <select class="diag-input" data-label="性別">
+        <option value="">選択してください</option>
+        <optgroup label="一般">
+          <option>男性（Male）</option>
+          <option>女性（Female）</option>
+          <option>回答しない</option>
+        </optgroup>
+        <optgroup label="ジェンダー多様性">
+          <option>ノンバイナリー（Non-binary）</option>
+          <option>ジェンダーフルイド（Genderfluid）</option>
+          <option>エイジェンダー（Agender）</option>
+          <option>バイジェンダー（Bigender）</option>
+          <option>パンジェンダー（Pangender）</option>
+          <option>トランスジェンダー女性（Trans woman）</option>
+          <option>トランスジェンダー男性（Trans man）</option>
+          <option>クエスチョニング（Questioning）</option>
+          <option>その他・自己定義</option>
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <!-- 診断入力 -->
+  <div style="margin-bottom:16px">
+    <div class="section-label">性格・心理系診断</div>
+    <div class="diag-grid" id="preset-grid">
+
+      <!-- MBTI -->
+      <div class="diag-item">
+        <div class="diag-label">MBTI</div>
+        <select class="diag-input" data-label="MBTI">
+          <option value="">選択してください</option>
+          <optgroup label="分析家">
+            <option>INTJ（建築家）</option><option>INTP（論理学者）</option>
+            <option>ENTJ（指揮官）</option><option>ENTP（討論者）</option>
+          </optgroup>
+          <optgroup label="外交官">
+            <option>INFJ（提唱者）</option><option>INFP（仲介者）</option>
+            <option>ENFJ（主人公）</option><option>ENFP（広報運動家）</option>
+          </optgroup>
+          <optgroup label="番人">
+            <option>ISTJ（管理者）</option><option>ISFJ（擁護者）</option>
+            <option>ESTJ（幹部）</option><option>ESFJ（領事）</option>
+          </optgroup>
+          <optgroup label="探検家">
+            <option>ISTP（巨匠）</option><option>ISFP（冒険家）</option>
+            <option>ESTP（起業家）</option><option>ESFP（エンターテイナー）</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- エニアグラム -->
+      <div class="diag-item">
+        <div class="diag-label">エニアグラム</div>
+        <select class="diag-input" data-label="エニアグラム">
+          <option value="">選択してください</option>
+          <option>タイプ1（改革者）</option><option>タイプ2（援助者）</option>
+          <option>タイプ3（達成者）</option><option>タイプ4（個人主義者）</option>
+          <option>タイプ5（調査者）</option><option>タイプ6（忠実者）</option>
+          <option>タイプ7（熱中者）</option><option>タイプ8（挑戦者）</option>
+          <option>タイプ9（平和主義者）</option>
+        </select>
+      </div>
+
+      <!-- Big5 -->
+      <div class="diag-item">
+        <div class="diag-label">Big5</div>
+        <input class="diag-input" data-label="Big5（ビッグファイブ）" placeholder="例: 開放性高・誠実性中・外向性低" />
+      </div>
+
+      <!-- 強み診断 -->
+      <div class="diag-item">
+        <div class="diag-label">強み診断</div>
+        <input class="diag-input" data-label="StrengthsFinder" placeholder="例: 共感性・学習欲・着想" />
+      </div>
+
+      <!-- 16Personalities傾向 -->
+      <div class="diag-item">
+        <div class="diag-label">思考タイプ</div>
+        <select class="diag-input" data-label="思考・感情タイプ">
+          <option value="">選択してください</option>
+          <option>論理型（Logician）</option>
+          <option>感情型（Empath）</option>
+          <option>直感型（Intuitive）</option>
+          <option>感覚型（Sensing）</option>
+        </select>
+      </div>
+
+      <!-- オーラカラー -->
+      <div class="diag-item">
+        <div class="diag-label">オーラ診断</div>
+        <select class="diag-input" data-label="オーラカラー">
+          <option value="">選択してください</option>
+          <option>レッド（情熱・行動力）</option>
+          <option>オレンジ（創造性・社交性）</option>
+          <option>イエロー（知性・楽観）</option>
+          <option>グリーン（癒し・調和）</option>
+          <option>ブルー（表現・コミュニケーション）</option>
+          <option>インディゴ（直感・洞察）</option>
+          <option>バイオレット（霊性・リーダーシップ）</option>
+          <option>ホワイト（純粋・多才）</option>
+          <option>ゴールド（知恵・カリスマ）</option>
+          <option>ピンク（愛情・共感）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px">
+    <div class="section-label">外見・イメージ系診断</div>
+    <div class="diag-grid">
+
+      <!-- 骨格診断 -->
+      <div class="diag-item">
+        <div class="diag-label">骨格診断</div>
+        <select class="diag-input" data-label="骨格診断">
+          <option value="">選択してください</option>
+          <option>ストレート</option><option>ウェーブ</option><option>ナチュラル</option>
+        </select>
+      </div>
+
+      <!-- パーソナルカラー16タイプ -->
+      <div class="diag-item">
+        <div class="diag-label">パーソナルカラー</div>
+        <select class="diag-input" data-label="パーソナルカラー">
+          <option value="">選択してください</option>
+          <optgroup label="4シーズン（基本）">
+            <option>イエベ春（スプリング）</option>
+            <option>ブルベ夏（サマー）</option>
+            <option>イエベ秋（オータム）</option>
+            <option>ブルベ冬（ウィンター）</option>
+          </optgroup>
+          <optgroup label="16タイプ・スプリング">
+            <option>ライトスプリング（明るく軽やか）</option>
+            <option>ウォームスプリング（温かく鮮やか）</option>
+            <option>クリアスプリング（澄んで華やか）</option>
+            <option>ブライトスプリング（鮮やかでビビッド）</option>
+          </optgroup>
+          <optgroup label="16タイプ・サマー">
+            <option>ライトサマー（爽やかで優しい）</option>
+            <option>クールサマー（エレガントで涼しげ）</option>
+            <option>ソフトサマー（穏やかでくすみ）</option>
+            <option>ブライトサマー（澄んで明るい）</option>
+          </optgroup>
+          <optgroup label="16タイプ・オータム">
+            <option>ウォームオータム（温かみが強い）</option>
+            <option>ソフトオータム（くすんだアース）</option>
+            <option>ディープオータム（濃く深みある）</option>
+            <option>ストロングオータム（濃く鮮やか）</option>
+          </optgroup>
+          <optgroup label="16タイプ・ウィンター">
+            <option>クールウィンター（クールで青み強）</option>
+            <option>クリアウィンター（澄んで鮮明）</option>
+            <option>ブライトウィンター（鮮やかでシャープ）</option>
+            <option>ディープウィンター（濃くダーク）</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- 顔タイプ診断 -->
+      <div class="diag-item">
+        <div class="diag-label">顔タイプ</div>
+        <select class="diag-input" data-label="顔タイプ診断">
+          <option value="">選択してください</option>
+          <option>フレッシュ（子供顔×直線）</option>
+          <option>クール（大人顔×直線）</option>
+          <option>クールカジュアル（大人顔×直線曲線MIX）</option>
+          <option>ソフトエレガント（大人顔×曲線）</option>
+          <option>エレガント（大人顔×曲線）</option>
+          <option>キュート（子供顔×曲線）</option>
+          <option>フェミニン（大人子供MIX×曲線）</option>
+          <option>アクティブキュート（子供顔×直線曲線MIX）</option>
+        </select>
+      </div>
+
+      <!-- 動物相診断 -->
+      <div class="diag-item">
+        <div class="diag-label">動物人相</div>
+        <select class="diag-input" data-label="動物人相診断">
+          <option value="">選択してください</option>
+          <option>たぬき顔（丸みがあり親しみやすい）</option>
+          <option>ねこ顔（目が大きく柔らか）</option>
+          <option>いぬ顔（垂れ目で穏やか）</option>
+          <option>うさぎ顔（童顔で可愛らしい）</option>
+          <option>きつね顔（切れ長でクール）</option>
+          <option>おおかみ顔（鋭くワイルド）</option>
+          <option>とり顔（細面で知的）</option>
+          <option>くま顔（大きく落ち着いた）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px">
+    <div class="section-label">東洋占術系</div>
+    <div class="diag-grid">
+
+      <!-- 血液型 -->
+      <div class="diag-item">
+        <div class="diag-label">血液型</div>
+        <select class="diag-input" data-label="血液型">
+          <option value="">選択してください</option>
+          <option>A型</option><option>B型</option>
+          <option>O型</option><option>AB型</option>
+        </select>
+      </div>
+
+      <!-- 数秘術 -->
+      <div class="diag-item">
+        <div class="diag-label">数秘術</div>
+        <select class="diag-input" data-label="数秘術（ライフパス）">
+          <option value="">選択してください</option>
+          <option>ライフパス1（リーダー）</option><option>ライフパス2（協調者）</option>
+          <option>ライフパス3（表現者）</option><option>ライフパス4（建設者）</option>
+          <option>ライフパス5（自由人）</option><option>ライフパス6（世話人）</option>
+          <option>ライフパス7（探求者）</option><option>ライフパス8（達成者）</option>
+          <option>ライフパス9（人道主義者）</option><option>ライフパス11（直感者）</option>
+          <option>ライフパス22（大建設者）</option><option>ライフパス33（導師）</option>
+        </select>
+      </div>
+
+      <!-- 九星気学 -->
+      <div class="diag-item">
+        <div class="diag-label">九星気学</div>
+        <select class="diag-input" data-label="九星気学">
+          <option value="">選択してください</option>
+          <option>一白水星</option><option>二黒土星</option><option>三碧木星</option>
+          <option>四緑木星</option><option>五黄土星</option><option>六白金星</option>
+          <option>七赤金星</option><option>八白土星</option><option>九紫火星</option>
+        </select>
+      </div>
+
+      <!-- 四柱推命・日干 -->
+      <div class="diag-item">
+        <div class="diag-label">四柱推命</div>
+        <select class="diag-input" data-label="四柱推命（日干）">
+          <option value="">選択してください</option>
+          <optgroup label="十干">
+            <option>甲（きのえ）</option><option>乙（きのと）</option>
+            <option>丙（ひのえ）</option><option>丁（ひのと）</option>
+            <option>戊（つちのえ）</option><option>己（つちのと）</option>
+            <option>庚（かのえ）</option><option>辛（かのと）</option>
+            <option>壬（みずのえ）</option><option>癸（みずのと）</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- 干支 -->
+      <div class="diag-item">
+        <div class="diag-label">干支</div>
+        <select class="diag-input" data-label="干支（十二支）">
+          <option value="">選択してください</option>
+          <option>子（ねずみ）</option><option>丑（うし）</option><option>寅（とら）</option>
+          <option>卯（うさぎ）</option><option>辰（たつ）</option><option>巳（へび）</option>
+          <option>午（うま）</option><option>未（ひつじ）</option><option>申（さる）</option>
+          <option>酉（とり）</option><option>戌（いぬ）</option><option>亥（いのしし）</option>
+        </select>
+      </div>
+
+      <!-- 動物キャラ占い -->
+      <div class="diag-item">
+        <div class="diag-label">動物キャラ</div>
+        <select class="diag-input" data-label="動物キャラ占い">
+          <option value="">選択してください</option>
+          <option>ペガサス</option><option>チーター</option><option>ゾウ</option>
+          <option>ライオン</option><option>たぬき</option><option>ひつじ</option>
+          <option>こじか</option><option>黒ひょう</option><option>おおかみ</option>
+          <option>さる</option><option>虎</option><option>コアラ</option>
+        </select>
+      </div>
+
+      <!-- マヤ暦 -->
+      <div class="diag-item">
+        <div class="diag-label">マヤ暦</div>
+        <input class="diag-input" data-label="マヤ暦（Kin番号）" placeholder="例: Kin144・黄色い種" />
+      </div>
+
+      <!-- 宿曜 -->
+      <div class="diag-item">
+        <div class="diag-label">宿曜占星術</div>
+        <select class="diag-input" data-label="宿曜占星術">
+          <option value="">選択してください</option>
+          <option>昴宿</option><option>畢宿</option><option>觜宿</option><option>参宿</option>
+          <option>井宿</option><option>鬼宿</option><option>柳宿</option><option>星宿</option>
+          <option>張宿</option><option>翼宿</option><option>軫宿</option><option>角宿</option>
+          <option>亢宿</option><option>氐宿</option><option>房宿</option><option>心宿</option>
+          <option>尾宿</option><option>箕宿</option><option>斗宿</option><option>女宿</option>
+          <option>虚宿</option><option>危宿</option><option>室宿</option><option>壁宿</option>
+          <option>奎宿</option><option>婁宿</option><option>胃宿</option>
+        </select>
+      </div>
+
+      <!-- 紫微斗数 -->
+      <div class="diag-item">
+        <div class="diag-label">紫微斗数</div>
+        <input class="diag-input" data-label="紫微斗数（命宮の星）" placeholder="例: 紫微星・天府星" />
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px">
+    <div class="section-label">西洋占術系</div>
+    <div class="diag-grid">
+
+      <!-- 星座（太陽星座） -->
+      <div class="diag-item">
+        <div class="diag-label">太陽星座</div>
+        <select class="diag-input" data-label="太陽星座">
+          <option value="">選択してください</option>
+          <option>おひつじ座</option><option>おうし座</option><option>ふたご座</option>
+          <option>かに座</option><option>しし座</option><option>おとめ座</option>
+          <option>てんびん座</option><option>さそり座</option><option>いて座</option>
+          <option>やぎ座</option><option>みずがめ座</option><option>うお座</option>
+        </select>
+      </div>
+
+      <!-- 月星座 -->
+      <div class="diag-item">
+        <div class="diag-label">月星座</div>
+        <select class="diag-input" data-label="月星座">
+          <option value="">選択してください</option>
+          <option>おひつじ座</option><option>おうし座</option><option>ふたご座</option>
+          <option>かに座</option><option>しし座</option><option>おとめ座</option>
+          <option>てんびん座</option><option>さそり座</option><option>いて座</option>
+          <option>やぎ座</option><option>みずがめ座</option><option>うお座</option>
+        </select>
+      </div>
+
+      <!-- 上昇星座（アセンダント） -->
+      <div class="diag-item">
+        <div class="diag-label">上昇星座</div>
+        <select class="diag-input" data-label="上昇星座（アセンダント）">
+          <option value="">選択してください</option>
+          <option>おひつじ座</option><option>おうし座</option><option>ふたご座</option>
+          <option>かに座</option><option>しし座</option><option>おとめ座</option>
+          <option>てんびん座</option><option>さそり座</option><option>いて座</option>
+          <option>やぎ座</option><option>みずがめ座</option><option>うお座</option>
+        </select>
+      </div>
+
+      <!-- タロット守護カード -->
+      <div class="diag-item">
+        <div class="diag-label">タロット</div>
+        <select class="diag-input" data-label="タロット守護カード">
+          <option value="">選択してください</option>
+          <option>愚者（0）</option><option>魔術師（Ⅰ）</option><option>女教皇（Ⅱ）</option>
+          <option>女帝（Ⅲ）</option><option>皇帝（Ⅳ）</option><option>教皇（Ⅴ）</option>
+          <option>恋人（Ⅵ）</option><option>戦車（Ⅶ）</option><option>力（Ⅷ）</option>
+          <option>隠者（Ⅸ）</option><option>運命の輪（Ⅹ）</option><option>正義（Ⅺ）</option>
+          <option>吊られた男（Ⅻ）</option><option>死神（ⅩⅢ）</option><option>節制（ⅩⅣ）</option>
+          <option>悪魔（ⅩⅤ）</option><option>塔（ⅩⅥ）</option><option>星（ⅩⅦ）</option>
+          <option>月（ⅩⅧ）</option><option>太陽（ⅩⅨ）</option><option>審判（ⅩⅩ）</option>
+          <option>世界（ⅩⅩⅠ）</option>
+        </select>
+      </div>
+
+      <!-- ルーン -->
+      <div class="diag-item">
+        <div class="diag-label">ルーン</div>
+        <input class="diag-input" data-label="ルーン占い（守護ルーン）" placeholder="例: フェフ・ウルズ・ソリサズ" />
+      </div>
+
+      <!-- カバラ -->
+      <div class="diag-item">
+        <div class="diag-label">カバラ数秘</div>
+        <select class="diag-input" data-label="カバラ数秘術">
+          <option value="">選択してください</option>
+          <option>1（創造・意志）</option><option>2（直感・感受性）</option>
+          <option>3（表現・喜び）</option><option>4（安定・秩序）</option>
+          <option>5（自由・変化）</option><option>6（愛・責任）</option>
+          <option>7（精神・分析）</option><option>8（力・繁栄）</option>
+          <option>9（完成・人道）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:24px">
+    <div class="section-label">その他・自由記入</div>
+    <div class="diag-grid">
+      <!-- 姓名判断 -->
+      <div class="diag-item">
+        <div class="diag-label">姓名判断</div>
+        <input class="diag-input" data-label="姓名判断（総画数）" placeholder="例: 総画23画・天格15" />
+      </div>
+      <!-- 前世診断 -->
+      <div class="diag-item">
+        <div class="diag-label">前世診断</div>
+        <input class="diag-input" data-label="前世診断" placeholder="例: 芸術家・戦士・巫女" />
+      </div>
+    </div>
+    <div id="custom-rows" style="margin-top:10px"></div>
+    <button class="add-btn" onclick="addCustomRow()">＋ 診断を追加</button>
+  </div>
+
+  <button class="gen-btn" id="gen-btn" onclick="generate()">▶ キャラクターを生成する</button>
+  <div class="error-msg" id="error-msg"></div>
+
+  <!-- Upgrade modal -->
+  <div class="modal-bg" id="modal-bg">
+    <div class="modal">
+      <h2>Proプランへ<br>アップグレード</h2>
+      <p>無制限生成・診断無制限・ウォーターマークなし・過去キャラ保存など全機能が使えます。</p>
+      <div class="modal-plans">
+        <div class="modal-plan selected" id="plan-pro" onclick="selectPlan('pro')">
+          <div class="modal-plan-name">Pro</div>
+          <div class="modal-plan-price">¥480<span>/月</span></div>
+          <div class="modal-plan-feat">無制限生成<br>診断無制限<br>保存10件</div>
+        </div>
+        <div class="modal-plan" id="plan-premium" onclick="selectPlan('premium')">
+          <div class="modal-plan-name">Premium</div>
+          <div class="modal-plan-price">¥980<span>/月</span></div>
+          <div class="modal-plan-feat">Proの全機能<br>相性診断<br>保存無制限</div>
+        </div>
+      </div>
+      <button class="stripe-btn" onclick="goToStripe()">決済ページへ進む →</button>
+      <button class="modal-close" onclick="hideUpgradeModal()">閉じる</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="loading-label" id="loading-label">生成中.</div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
+      <div class="progress-stripe"></div>
+      <div class="progress-pct" id="progress-pct">0%</div>
+    </div>
+    <div class="loading-phase" id="loading-phase">診断結果を分析しています</div>
+  </div>
+
+    <!-- Result -->
+  <div class="result" id="result">
+    <div class="result-card">
+      <div class="card-header">
+        <span class="card-num" id="card-num">#001</span>
+      </div>
+      <div class="card-body">
+        <div class="char-visual">
+          <div id="char-svg-wrap">
+            <!-- SVGがここに入る -->
+          </div>
+          <div class="char-element" id="char-element">✨</div>
+          <div class="char-name" id="char-name">—</div>
+          <div class="char-archetype" id="char-archetype">—</div>
+        </div>
+        <div class="char-info">
+          <div class="char-desc" id="char-desc">—</div>
+          <div>
+            <div class="stat-name" style="margin-bottom:8px">STATUS</div>
+            <div class="stats-grid" id="stats-grid"></div>
+          </div>
+          <div>
+            <div class="stat-name" style="margin-bottom:8px">KEYWORDS</div>
+            <div class="keywords" id="keywords"></div>
+          </div>
+          <div class="compat" id="compat">—</div>
+        </div>
+      </div>
+
+      <!-- 自己分析セクション -->
+      <div class="analysis-section" id="analysis-section" style="display:none">
+        <div class="analysis-inner">
+          <div class="analysis-block" id="analysis-core"></div>
+          <div class="analysis-block" id="analysis-strength"></div>
+          <div class="analysis-block" id="analysis-shadow"></div>
+          <div class="analysis-block" id="analysis-growth"></div>
+          <div class="analysis-block" id="analysis-relation"></div>
+          <div class="analysis-block" id="analysis-mission"></div>
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <div class="share-preview" id="share-preview">—</div>
+        <div class="char-count" id="char-count">0/140</div>
+        <button class="share-btn" onclick="downloadCharImage()">画像保存</button>
+        <button class="share-btn" onclick="copyResult()">COPY</button>
+        <button class="share-btn" onclick="shareX()">POST → X</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:60px"></div>
+</div>
+
+<script>
+// ============================================================
+// 状態管理
+// ============================================================
+let cardCount = 0;
+let currentShareText = '';
+let selectedPlan = 'pro';
+const WORKERS_URL = 'https://shiny-base-1561.je-suis-taku.workers.dev'; // ← Workers URL
+const SITE_URL = 'https://je-suis-taku.github.io/mychar'; // ← 公開後URLに変更
+
+const savedToken = localStorage.getItem('mychar_pro_token') || '';
+if (savedToken) {
+  document.getElementById('pro-token').value = savedToken;
+  document.getElementById('pro-row').classList.add('show');
+}
+
+// ============================================================
+// キャラクター描画（Canvas）- charTypeに応じて描き分け
+// ============================================================
+function drawCharacter(canvas, charData) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const p = charData.palette || { skin: '#FFD5B4', hair: '#8B4513', accent: '#FF6B9D', eye: '#4A90D9' };
+  const type = charData.charType || 'human';
+  const animal = (charData.animalType || 'cat').toLowerCase();
+
+  if (type === 'animal' || (type === 'hybrid' && animal)) {
+    drawAnimalChar(ctx, w, h, p, charData);
+  } else if (type === 'alien') {
+    drawAlienChar(ctx, w, h, p, charData);
+  } else if (type === 'spirit') {
+    drawSpiritChar(ctx, w, h, p, charData);
+  } else if (type === 'robot') {
+    drawRobotChar(ctx, w, h, p, charData);
+  } else {
+    drawHumanChar(ctx, w, h, p, charData);
+  }
+}
+
+// ---- 人間キャラ ----
+function drawHumanChar(ctx, w, h, p, d) {
+  const bt = d.bodyType || 'round';
+  // 体シルエット
+  ctx.fillStyle = p.accent + '44';
+  ctx.beginPath(); ctx.ellipse(w/2, h*.72, 44, 38, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = p.accent;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.72, 36, 30, 0, 0, Math.PI*2); ctx.fill();
+  // 腕
+  ctx.strokeStyle = p.skin; ctx.lineWidth = 12; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(w/2-34, h*.56); ctx.quadraticCurveTo(w/2-58, h*.65, w/2-48, h*.78); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2+34, h*.56); ctx.quadraticCurveTo(w/2+58, h*.65, w/2+48, h*.78); ctx.stroke();
+  // 首・頭
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.roundRect(w/2-9, h*.38, 18, 16, 4); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2, h*.28, 40, 38, 0, 0, Math.PI*2); ctx.fill();
+  // 髪
+  ctx.fillStyle = p.hair;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.14, 42, 26, 0, 0, Math.PI); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2-32, h*.26, 14, 22, -.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+32, h*.26, 14, 22, .3, 0, Math.PI*2); ctx.fill();
+  drawEyes(ctx, w, h*.27, p, d.accessory);
+  drawSmile(ctx, w, h, p);
+  drawLegs(ctx, w, h, p);
+  drawAccessory(ctx, w, h, p, d.accessory, h*.27);
+}
+
+// ---- 動物キャラ（獣人） ----
+function drawAnimalChar(ctx, w, h, p, d) {
+  const animal = (d.animalType || 'cat').toLowerCase();
+  // 体
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.68, 46, 42, 0, 0, Math.PI*2); ctx.fill();
+  // 服
+  ctx.fillStyle = p.accent;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.72, 34, 28, 0, 0, Math.PI*2); ctx.fill();
+  // 頭（丸め）
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.3, 44, 40, 0, 0, Math.PI*2); ctx.fill();
+  // 動物耳
+  if (animal.includes('fox') || animal.includes('cat') || animal.includes('wolf') || animal.includes('rabbit') || animal.includes('bear') || animal.includes('dog')) {
+    const earColor = p.hair;
+    const innerEar = p.accent + 'aa';
+    if (animal.includes('rabbit')) {
+      // ウサギ耳（長い）
+      ctx.fillStyle = earColor;
+      ctx.beginPath(); ctx.ellipse(w/2-16, h*.08, 9, 22, -.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(w/2+16, h*.08, 9, 22, .2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = innerEar;
+      ctx.beginPath(); ctx.ellipse(w/2-16, h*.08, 5, 16, -.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(w/2+16, h*.08, 5, 16, .2, 0, Math.PI*2); ctx.fill();
+    } else {
+      // 三角耳（ねこ・きつね・おおかみなど）
+      ctx.fillStyle = earColor;
+      ctx.beginPath(); ctx.moveTo(w/2-30, h*.14); ctx.lineTo(w/2-14, h*.02); ctx.lineTo(w/2-6, h*.18); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(w/2+30, h*.14); ctx.lineTo(w/2+14, h*.02); ctx.lineTo(w/2+6, h*.18); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = innerEar;
+      ctx.beginPath(); ctx.moveTo(w/2-24, h*.14); ctx.lineTo(w/2-14, h*.06); ctx.lineTo(w/2-9, h*.17); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(w/2+24, h*.14); ctx.lineTo(w/2+14, h*.06); ctx.lineTo(w/2+9, h*.17); ctx.closePath(); ctx.fill();
+    }
+  }
+  // きつね・おおかみ→鼻先を少し突き出す
+  if (animal.includes('fox') || animal.includes('wolf') || animal.includes('dog')) {
+    ctx.fillStyle = p.skin;
+    ctx.beginPath(); ctx.ellipse(w/2, h*.36, 18, 12, 0, 0, Math.PI*2); ctx.fill();
+  }
+  // しっぽ
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 10; ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (animal.includes('fox')) {
+    ctx.moveTo(w/2+38, h*.75); ctx.quadraticCurveTo(w/2+70, h*.6, w/2+55, h*.4);
+  } else {
+    ctx.moveTo(w/2+38, h*.78); ctx.quadraticCurveTo(w/2+65, h*.7, w/2+58, h*.55);
+  }
+  ctx.stroke();
+  // しっぽ先
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  if (animal.includes('fox')) ctx.ellipse(w/2+55, h*.38, 8, 10, .3, 0, Math.PI*2);
+  else ctx.ellipse(w/2+58, h*.53, 6, 8, .2, 0, Math.PI*2);
+  ctx.fill();
+  // 目・口・頬
+  drawEyes(ctx, w, h*.3, p, d.accessory);
+  drawSmile(ctx, w, h, p);
+  // 頬
+  ctx.fillStyle = p.accent + '55';
+  ctx.beginPath(); ctx.ellipse(w/2-24, h*.34, 10, 7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+24, h*.34, 10, 7, 0, 0, Math.PI*2); ctx.fill();
+  drawAccessory(ctx, w, h, p, d.accessory, h*.3);
+}
+
+// ---- 宇宙人キャラ ----
+function drawAlienChar(ctx, w, h, p, d) {
+  // 体（細め・異形）
+  ctx.fillStyle = p.accent + '88';
+  ctx.beginPath(); ctx.ellipse(w/2, h*.7, 30, 38, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = p.accent;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.72, 22, 28, 0, 0, Math.PI*2); ctx.fill();
+  // 触覚
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(w/2-10, h*.16); ctx.quadraticCurveTo(w/2-28, h*.06, w/2-24, h*.02); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2+10, h*.16); ctx.quadraticCurveTo(w/2+28, h*.06, w/2+24, h*.02); ctx.stroke();
+  ctx.fillStyle = p.accent;
+  ctx.beginPath(); ctx.arc(w/2-24, h*.02, 5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(w/2+24, h*.02, 5, 0, Math.PI*2); ctx.fill();
+  // 頭（大きく卵形）
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.27, 44, 50, 0, 0, Math.PI*2); ctx.fill();
+  // 大きな目（3つ）
+  const eyeGlow = p.eye;
+  // 左目
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(w/2-18, h*.24, 12, 16, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = eyeGlow; ctx.beginPath(); ctx.ellipse(w/2-18, h*.24, 8, 12, 0, 0, Math.PI*2); ctx.fill();
+  // 右目
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(w/2+18, h*.24, 12, 16, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = eyeGlow; ctx.beginPath(); ctx.ellipse(w/2+18, h*.24, 8, 12, 0, 0, Math.PI*2); ctx.fill();
+  // 第三の目
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(w/2, h*.16, 7, 9, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = p.accent; ctx.beginPath(); ctx.ellipse(w/2, h*.16, 4, 6, 0, 0, Math.PI*2); ctx.fill();
+  // ハイライト
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(w/2-13, h*.21, 3, 4, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+23, h*.21, 3, 4, 0, 0, Math.PI*2); ctx.fill();
+  // 小さな口
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(w/2-6, h*.34); ctx.lineTo(w/2+6, h*.34); ctx.stroke();
+  // 細い腕4本
+  ctx.strokeStyle = p.skin; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(w/2-26, h*.58); ctx.lineTo(w/2-50, h*.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2-26, h*.65); ctx.lineTo(w/2-52, h*.68); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2+26, h*.58); ctx.lineTo(w/2+50, h*.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2+26, h*.65); ctx.lineTo(w/2+52, h*.68); ctx.stroke();
+  // 浮遊する足
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.ellipse(w/2-12, h*.9, 10, 6, -.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+12, h*.9, 10, 6, .3, 0, Math.PI*2); ctx.fill();
+}
+
+// ---- 精霊・妖精キャラ ----
+function drawSpiritChar(ctx, w, h, p, d) {
+  // 翼（半透明）
+  ctx.fillStyle = p.accent + '44';
+  ctx.beginPath(); ctx.ellipse(w/2-52, h*.5, 22, 40, -.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+52, h*.5, 22, 40, .5, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = p.accent + 'aa'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(w/2-52, h*.5, 22, 40, -.5, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(w/2+52, h*.5, 22, 40, .5, 0, Math.PI*2); ctx.stroke();
+  // 小さな翼2枚目
+  ctx.fillStyle = p.hair + '33';
+  ctx.beginPath(); ctx.ellipse(w/2-42, h*.65, 14, 24, -.7, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+42, h*.65, 14, 24, .7, 0, Math.PI*2); ctx.fill();
+  // 体（光のような透明感）
+  ctx.fillStyle = p.accent + '55';
+  ctx.beginPath(); ctx.ellipse(w/2, h*.7, 30, 34, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = p.accent + 'bb';
+  ctx.beginPath(); ctx.ellipse(w/2, h*.72, 22, 24, 0, 0, Math.PI*2); ctx.fill();
+  // 頭
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.27, 38, 36, 0, 0, Math.PI*2); ctx.fill();
+  // 髪（揺れるような）
+  ctx.fillStyle = p.hair;
+  ctx.beginPath(); ctx.ellipse(w/2, h*.13, 40, 22, 0, 0, Math.PI); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2-30, h*.25, 12, 20, -.4, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+30, h*.25, 12, 20, .4, 0, Math.PI*2); ctx.fill();
+  // 輝く飾り
+  ctx.fillStyle = '#FFD700';
+  drawStar(ctx, w/2, h*.04, 5, 10, 5, '#FFD700');
+  // 目（大きく輝く）
+  drawEyes(ctx, w, h*.27, p, null);
+  drawSmile(ctx, w, h, p);
+  // 魔法の粒子
+  [[-40, .35], [42, .4], [-30, .6], [48, .55], [-48, .5]].forEach(([dx, dy]) => {
+    ctx.fillStyle = p.accent;
+    ctx.beginPath(); ctx.arc(w/2 + dx, h * dy, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#FFD70088';
+    ctx.beginPath(); ctx.arc(w/2 + dx - 1, h * dy - 1, 1.5, 0, Math.PI*2); ctx.fill();
+  });
+}
+
+// ---- ロボットキャラ ----
+function drawRobotChar(ctx, w, h, p, d) {
+  // 体（四角）
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.roundRect(w/2-34, h*.48, 68, 44, 8); ctx.fill();
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(w/2-34, h*.48, 68, 44, 8); ctx.stroke();
+  // 胸の発光パネル
+  ctx.fillStyle = p.accent + 'cc';
+  ctx.beginPath(); ctx.roundRect(w/2-14, h*.54, 28, 18, 4); ctx.fill();
+  ctx.fillStyle = p.accent;
+  ctx.beginPath(); ctx.arc(w/2, h*.63, 6, 0, Math.PI*2); ctx.fill();
+  // 腕（角ばった）
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.roundRect(w/2-54, h*.5, 18, 34, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(w/2+36, h*.5, 18, 34, 6); ctx.fill();
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(w/2-54, h*.5, 18, 34, 6); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(w/2+36, h*.5, 18, 34, 6); ctx.stroke();
+  // 首
+  ctx.fillStyle = p.hair;
+  ctx.beginPath(); ctx.roundRect(w/2-8, h*.38, 16, 12, 3); ctx.fill();
+  // 頭（四角）
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.roundRect(w/2-38, h*.1, 76, 60, 10); ctx.fill();
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(w/2-38, h*.1, 76, 60, 10); ctx.stroke();
+  // アンテナ
+  ctx.strokeStyle = p.accent; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(w/2, h*.1); ctx.lineTo(w/2, h*.03); ctx.stroke();
+  ctx.fillStyle = p.accent;
+  ctx.beginPath(); ctx.arc(w/2, h*.02, 5, 0, Math.PI*2); ctx.fill();
+  // 目（LED風）
+  const eyeY = h * .27;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.roundRect(w/2-22, eyeY-10, 16, 14, 3); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(w/2+6, eyeY-10, 16, 14, 3); ctx.fill();
+  ctx.fillStyle = p.eye;
+  ctx.beginPath(); ctx.roundRect(w/2-20, eyeY-8, 12, 10, 2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(w/2+8, eyeY-8, 12, 10, 2); ctx.fill();
+  // 口（ドット）
+  ctx.fillStyle = p.accent;
+  [-8,-4,0,4,8].forEach(dx => {
+    ctx.beginPath(); ctx.arc(w/2+dx, h*.35, 2, 0, Math.PI*2); ctx.fill();
+  });
+  // 足（ブロック）
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.roundRect(w/2-28, h*.84, 22, 14, 4); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(w/2+6, h*.84, 22, 14, 4); ctx.fill();
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(w/2-28, h*.84, 22, 14, 4); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(w/2+6, h*.84, 22, 14, 4); ctx.stroke();
+}
+
+// ---- 共通パーツ ----
+function drawEyes(ctx, w, eyeY, p, accessory) {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(w/2-14, eyeY, 9, 11, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+14, eyeY, 9, 11, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = p.eye || '#333';
+  ctx.beginPath(); ctx.ellipse(w/2-14, eyeY+1, 6, 8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+14, eyeY+1, 6, 8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(w/2-11, eyeY-2, 2.5, 3, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+17, eyeY-2, 2.5, 3, 0, 0, Math.PI*2); ctx.fill();
+  // まつげ（glassesでなければ）
+  if (accessory !== 'glasses') {
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
+    [[-20,-2],[-14,-1],[-8,-2]].forEach(([dx,dy]) => {
+      ctx.beginPath(); ctx.moveTo(w/2+dx, eyeY-8); ctx.lineTo(w/2+dx+dy*.5, eyeY-13); ctx.stroke();
+    });
+    [[8,-2],[14,-1],[20,-2]].forEach(([dx,dy]) => {
+      ctx.beginPath(); ctx.moveTo(w/2+dx, eyeY-8); ctx.lineTo(w/2+dx+dy*.5, eyeY-13); ctx.stroke();
+    });
+  }
+  if (accessory === 'glasses') {
+    ctx.strokeStyle = p.hair; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(w/2-14, eyeY, 11, 13, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(w/2+14, eyeY, 11, 13, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w/2-3, eyeY); ctx.lineTo(w/2+3, eyeY); ctx.stroke();
+  }
+}
+
+function drawSmile(ctx, w, h, p) {
+  ctx.strokeStyle = p.accent; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(w/2-8, h*.33);
+  ctx.quadraticCurveTo(w/2, h*.36, w/2+8, h*.33);
+  ctx.stroke();
+  ctx.fillStyle = p.accent + '55';
+  ctx.beginPath(); ctx.ellipse(w/2-22, h*.31, 9, 6, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+22, h*.31, 9, 6, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function drawLegs(ctx, w, h, p) {
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.roundRect(w/2-22, h*.84, 16, 12, 6); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(w/2+6, h*.84, 16, 12, 6); ctx.fill();
+  ctx.fillStyle = p.hair;
+  ctx.beginPath(); ctx.ellipse(w/2-14, h*.91, 14, 7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w/2+14, h*.91, 14, 7, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function drawAccessory(ctx, w, h, p, acc, eyeY) {
+  if (acc === 'bow') {
+    ctx.fillStyle = p.accent;
+    ctx.beginPath(); ctx.moveTo(w/2+18, h*.11); ctx.bezierCurveTo(w/2+30, h*.07, w/2+36, h*.15, w/2+24, h*.15); ctx.bezierCurveTo(w/2+36, h*.15, w/2+30, h*.22, w/2+18, h*.19); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(w/2+18, h*.11); ctx.bezierCurveTo(w/2+10, h*.07, w/2+4, h*.15, w/2+16, h*.15); ctx.bezierCurveTo(w/2+4, h*.15, w/2+10, h*.22, w/2+18, h*.19); ctx.closePath(); ctx.fill();
+  } else if (acc === 'crown') {
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath(); ctx.moveTo(w/2-18, h*.09); ctx.lineTo(w/2-12, h*.03); ctx.lineTo(w/2, h*.07); ctx.lineTo(w/2+12, h*.02); ctx.lineTo(w/2+18, h*.09); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#FFA500'; ctx.lineWidth = 1; ctx.stroke();
+  } else if (acc === 'star') {
+    drawStar(ctx, w/2+28, h*.1, 5, 10, 5, p.accent);
+  }
+}
+
+function drawStar(ctx, cx, cy, spikes, outerR, innerR, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < spikes * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (i * Math.PI) / spikes - Math.PI / 2;
+    i === 0 ? ctx.moveTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle))
+             : ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ---- Canvasを装飾付き画像として書き出す ----
+function generateShareCanvas(charData) {
+  const out = document.createElement('canvas');
+  out.width = 400; out.height = 480;
+  const ctx = out.getContext('2d');
+  const p = charData.palette || {};
+
+  // 背景
+  ctx.fillStyle = p.accent ? p.accent + '22' : '#f5f0e8';
+  ctx.fillRect(0, 0, 400, 480);
+  ctx.strokeStyle = '#0d0d0d'; ctx.lineWidth = 4;
+  ctx.strokeRect(8, 8, 384, 464);
+
+  // SVGをImageとして描画
+  const svgEl = document.querySelector('#char-svg-wrap svg');
+  if (svgEl) {
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const img = new Image();
+    const blob = new Blob([svgData], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      ctx.drawImage(img, 110, 20, 180, 220);
+      URL.revokeObjectURL(url);
+      addTextToCanvas(ctx, charData, out);
+    };
+    img.src = url;
+    return out; // 非同期なので後でダウンロード
+  } else {
+    addTextToCanvas(ctx, charData, out);
+    return out;
+  }
+}
+
+function addTextToCanvas(ctx, charData, canvas) {
+  ctx.fillStyle = '#0d0d0d';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(charData.name || '', 200, 270);
+  ctx.fillStyle = charData.palette?.accent || '#e8451a';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(charData.archetype || '', 200, 292);
+  const kws = (charData.keywords || []).slice(0, 3);
+  ctx.fillStyle = '#0d0d0d'; ctx.font = '12px sans-serif';
+  ctx.fillText(kws.join('  ·  '), 200, 315);
+  const desc = charData.description || '';
+  const lines = wrapText(ctx, desc, 340);
+  ctx.fillStyle = '#555'; ctx.font = '11px sans-serif';
+  lines.slice(0, 5).forEach((line, i) => ctx.fillText(line, 200, 340 + i * 16));
+  ctx.fillStyle = charData.palette?.accent || '#e8451a';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText('Me', 200, 450);
+  ctx.fillStyle = '#888'; ctx.font = '10px sans-serif';
+  ctx.fillText('#Me診断 #キャラ生成', 200, 465);
+}
+  // キャラ名
+  ctx.fillStyle = '#0d0d0d';
+
+function wrapText(ctx, text, maxWidth) {
+  const words = [...text];
+  const lines = [];
+  let line = '';
+  for (const char of words) {
+    const test = line + char;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = char;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function downloadCharImage() {
+  if (!window._lastChar) return;
+  const svgEl = document.querySelector('#char-svg-wrap svg');
+  if (svgEl) {
+    const svgData = new XMLSerializer().serializeToString(svgEl);
+    const out = document.createElement('canvas');
+    out.width = 400; out.height = 480;
+    const ctx = out.getContext('2d');
+    const p = window._lastChar.palette || {};
+    ctx.fillStyle = p.accent ? p.accent + '22' : '#f5f0e8';
+    ctx.fillRect(0, 0, 400, 480);
+    ctx.strokeStyle = '#0d0d0d'; ctx.lineWidth = 4;
+    ctx.strokeRect(8, 8, 384, 464);
+    const img = new Image();
+    const blob = new Blob([svgData], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      ctx.drawImage(img, 110, 20, 180, 220);
+      URL.revokeObjectURL(url);
+      addTextToCanvas(ctx, window._lastChar, out);
+      const a = document.createElement('a');
+      a.download = 'me-character.png';
+      a.href = out.toDataURL('image/png');
+      a.click();
+    };
+    img.src = url;
+  }
+}
+
+// ============================================================
+// プロンプト生成
+// ============================================================
+function buildPrompt(diagnoses) {
+  const list = diagnoses.map(d => `・${d.label}：${d.value}`).join('\n');
+  return `あなたは世界最高のキャラクタークリエイター兼心理分析家AIです。以下の診断結果を深く統合・分析して、ユニークなオリジナルキャラクターと詳細な自己分析レポートを生成してください。
+
+【診断結果一覧】
+${list}
+
+【キャラクタータイプの指針】
+診断結果の本質的な雰囲気から最もふさわしいタイプを選んでください：
+- human（人間）
+- animal（動物または獣人：ねこ、うさぎ、きつね、おおかみ、ドラゴンなど）
+- alien（宇宙人・異星人）
+- spirit（精霊・妖精・神様・天使・悪魔）
+- robot（ロボット・アンドロイド・サイボーグ）
+- hybrid（複数の要素を持つ存在）
+
+【SVGイラストの指針】
+180×220pxのviewBoxで、愛着が湧く個性的なキャラクターを描いてください。
+- シンプルすぎず、でも複雑すぎない「ゆるかわ」スタイル
+- 顔のパーツ（目・口・眉）は必ず描く
+- キャラのタイプに応じた特徴（耳・しっぽ・翼・アンテナなど）を加える
+- 診断結果のカラーパレットを使った配色
+- 背景は白（#ffffff）または薄い色
+
+以下のJSON形式のみで返答してください。前後に説明文や\`\`\`は不要です：
+
+{
+  "name": "キャラクター名（日本語でユニークな名前）",
+  "archetype": "アーキタイプ（英語で短く詩的に、例: THE MOONLIT FOX STRATEGIST）",
+  "charType": "human / animal / alien / spirit / robot / hybrid のいずれか",
+  "animalType": "animal系の場合のみ：ベースとなる動物（例: fox, cat, dragon）",
+  "element": "このキャラを象徴する絵文字1文字",
+  "description": "このキャラクターの本質を表す詩的な説明文（日本語、150〜200字。診断結果から読み取れる深い洞察を含む）",
+  "palette": {
+    "skin": "肌・体の色HEX",
+    "hair": "髪・耳・たてがみの色HEX",
+    "accent": "服・翼・模様のアクセントカラーHEX",
+    "eye": "目の色HEX"
+  },
+  "svgCode": "viewBox='0 0 180 220'のSVGタグの中身のみ。愛着が湧くキャラクターイラストを描いてください。backgroundのrectから始め、顔・体・特徴的なパーツを含めること。",
+  "stats": [
+    { "name": "直感力", "value": 0〜100の整数, "color": "pink" },
+    { "name": "共感力", "value": 0〜100の整数, "color": "purple" },
+    { "name": "創造力", "value": 0〜100の整数, "color": "mint" },
+    { "name": "実行力", "value": 0〜100の整数, "color": "default" }
+  ],
+  "keywords": ["キーワード1", "キーワード2", "キーワード3", "キーワード4", "キーワード5"],
+  "compatibility": "相性のいいタイプとその理由（60字以内）",
+  "analysis": {
+    "core": {
+      "title": "あなたの本質",
+      "text": "診断結果から読み取れるあなたの根本的な性質・本質・魂の在り方を深く分析（200〜250字）"
+    },
+    "strength": {
+      "title": "あなたの才能と強み",
+      "text": "複数の診断結果を統合して浮かび上がる、あなた固有の強み・才能・得意なことを具体的に（200〜250字）"
+    },
+    "shadow": {
+      "title": "あなたの課題と成長ポイント",
+      "text": "診断結果から見えてくる、あなたが向き合うべき課題・弱み・成長の余地を優しく率直に（200〜250字）"
+    },
+    "growth": {
+      "title": "あなたの成長の方向性",
+      "text": "今のあなたがより輝くために意識するといい方向性・行動・習慣を具体的に提案（200〜250字）"
+    },
+    "relation": {
+      "title": "あなたの対人関係の特徴",
+      "text": "人との関わり方・コミュニケーションの傾向・相性のいい人の特徴・注意すべき関係性（200〜250字）"
+    },
+    "mission": {
+      "title": "あなたの使命と人生のテーマ",
+      "text": "診断結果の組み合わせから浮かび上がる、あなたの人生における使命・テーマ・大切にすべき価値観（200〜250字）"
+    }
+  },
+  "shareText": "X投稿用テキスト。キャラ名・特徴・ハッシュタグ込みで【必ず100文字以内】。URLは含めない"
+}`;
+}
+
+// ============================================================
+// 生成処理
+// ============================================================
+async function generate() {
+  const diagnoses = collectDiagnoses();
+  if (diagnoses.length === 0) { showError('最低1つ診断結果を入力してください。'); return; }
+
+  hideError();
+  showLoading(true);
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('result').classList.remove('show');
+
+  const proToken = document.getElementById('pro-token').value.trim();
+
+  try {
+    const response = await fetch(WORKERS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userToken: proToken || null,
+        messages: [{ role: 'user', content: buildPrompt(diagnoses) }],
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.status === 429) {
+      showError(data.message + (data.isPro ? '' : ' <a onclick="showUpgradeModal()">→ Proにアップグレード</a>'));
+      return;
+    }
+    if (!response.ok) throw new Error(data.message || `エラー: ${response.status}`);
+    if (data._meta) updatePlanBanner(data._meta);
+
+    const text = data.content.map(b => b.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const char = JSON.parse(clean);
+    renderCharacter(char, diagnoses);
+
+  } catch (e) {
+    showError('エラー: ' + e.message);
+  } finally {
+    showLoading(false);
+    document.getElementById('gen-btn').disabled = false;
+  }
+}
+
+// ============================================================
+// キャラクター描画
+// ============================================================
+function renderCharacter(char, diagnoses) {
+  window._lastChar = char;
+  cardCount++;
+  document.getElementById('card-num').textContent = '#' + String(cardCount).padStart(3, '0');
+  document.getElementById('char-name').textContent = char.name || '???';
+
+  const typeLabels = { human:'人間', animal:'動物', alien:'宇宙人', spirit:'精霊', robot:'ロボット', hybrid:'ハイブリッド' };
+  const typeLabel = typeLabels[char.charType] || char.charType || '';
+  const animalLabel = char.animalType ? ` / ${char.animalType}` : '';
+  document.getElementById('char-archetype').textContent = (typeLabel + animalLabel + ' · ' + (char.archetype || '')).trim();
+  document.getElementById('char-element').textContent = char.element || '✨';
+  document.getElementById('char-desc').textContent = char.description || '';
+
+  // SVG表示
+  const svgWrap = document.getElementById('char-svg-wrap');
+  if (char.svgCode) {
+    svgWrap.innerHTML = `<svg viewBox="0 0 180 220" xmlns="http://www.w3.org/2000/svg">${char.svgCode}</svg>`;
+  } else {
+    // フォールバック：絵文字表示
+    svgWrap.innerHTML = `<div style="font-size:80px;text-align:center;line-height:220px">${char.element || '✨'}</div>`;
+  }
+
+  // Stats
+  const statsGrid = document.getElementById('stats-grid');
+  statsGrid.innerHTML = '';
+  (char.stats || []).forEach(stat => {
+    const div = document.createElement('div');
+    div.className = 'stat-item';
+    const colorClass = ['pink','purple','mint'].includes(stat.color) ? stat.color : '';
+    div.innerHTML = `
+      <div class="stat-name">${stat.name}</div>
+      <div class="stat-bar-wrap">
+        <div class="stat-bar ${colorClass}" style="width:0%" data-target="${stat.value}"></div>
+      </div>`;
+    statsGrid.appendChild(div);
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.stat-bar').forEach(b => b.style.width = b.dataset.target + '%');
+  }, 100);
+
+  // Keywords
+  const kwWrap = document.getElementById('keywords');
+  kwWrap.innerHTML = '';
+  (char.keywords || []).forEach(kw => {
+    const span = document.createElement('span');
+    span.className = 'kw';
+    span.textContent = kw;
+    kwWrap.appendChild(span);
+  });
+
+  // Compatibility
+  document.getElementById('compat').innerHTML = `<strong>相性タイプ：</strong>${char.compatibility || ''}`;
+
+  // 自己分析セクション
+  if (char.analysis) {
+    const blocks = [
+      { id: 'analysis-core',     key: 'core' },
+      { id: 'analysis-strength', key: 'strength' },
+      { id: 'analysis-shadow',   key: 'shadow' },
+      { id: 'analysis-growth',   key: 'growth' },
+      { id: 'analysis-relation', key: 'relation' },
+      { id: 'analysis-mission',  key: 'mission' },
+    ];
+    blocks.forEach(({ id, key }) => {
+      const el = document.getElementById(id);
+      const data = char.analysis[key];
+      if (el && data) {
+        el.innerHTML = `
+          <div class="analysis-label">${key.toUpperCase()}</div>
+          <div class="analysis-title">${data.title || ''}</div>
+          <div class="analysis-text">${data.text || ''}</div>`;
+      }
+    });
+    document.getElementById('analysis-section').style.display = 'block';
+  }
+
+  buildShareText(char, diagnoses);
+  document.getElementById('result').classList.add('show');
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+// ============================================================
+// 140文字以内シェアテキスト
+// ============================================================
+function buildShareText(char, diagnoses) {
+  const base = char.shareText || `【${char.name}】${char.archetype}`;
+  // URL（23文字固定として計算 = Twitterの短縮URL）
+  const URL_LEN = 23;
+  const LIMIT = 140;
+  const available = LIMIT - URL_LEN - 1; // スペース1文字分
+
+  let body = base;
+  if ([...body].length > available) {
+    body = [...body].slice(0, available - 1).join('') + '…';
+  }
+
+  currentShareText = body + ' ' + SITE_URL;
+
+  const totalLen = [...body].length + 1 + URL_LEN;
+  const countEl = document.getElementById('char-count');
+  countEl.textContent = totalLen + '/140';
+  countEl.className = 'char-count ' + (totalLen <= 140 ? 'ok' : 'over');
+
+  document.getElementById('share-preview').textContent = body;
+}
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function collectDiagnoses() {
+  const results = [];
+  // 性別
+  const genderEl = document.querySelector('[data-label="性別"]');
+  if (genderEl && genderEl.value) results.push({ label: '性別', value: genderEl.value });
+  // プリセット（preset-grid内のselectとinput）
+  document.querySelectorAll('#preset-grid .diag-input').forEach(el => {
+    const val = el.value.trim();
+    if (val) results.push({ label: el.dataset.label, value: val });
+  });
+  // preset-grid外のselectとinput（各セクション）
+  document.querySelectorAll('.diag-grid:not(#preset-grid) .diag-input').forEach(el => {
+    const val = el.value.trim();
+    if (val) results.push({ label: el.dataset.label, value: val });
+  });
+  // カスタム行
+  document.querySelectorAll('.custom-row').forEach(row => {
+    const label = row.querySelector('.custom-label-input')?.value.trim();
+    const val = row.querySelector('.custom-val-input')?.value.trim();
+    if (label && val) results.push({ label, value: val });
+    else if (!label && val) {
+      row.querySelector('.custom-label-input')?.classList.add('input-error');
+    }
+  });
+  return results;
+}
+
+function addCustomRow() {
+  const wrap = document.getElementById('custom-rows');
+  const row = document.createElement('div');
+  row.className = 'custom-row';
+  row.innerHTML = `
+    <input class="custom-label-input" placeholder="診断名（必須）" oninput="this.classList.remove('input-error')" />
+    <input class="custom-val-input" placeholder="結果を入力..." />
+    <button onclick="this.parentElement.remove()" style="border:1.5px solid #ddd;background:transparent;padding:0 12px;cursor:pointer;font-size:16px;color:#aaa;">×</button>
+  `;
+  wrap.appendChild(row);
+}
+
+function updatePlanBanner(meta) {
+  document.getElementById('used-count').textContent = meta.used;
+  document.getElementById('limit-count').textContent = meta.limit >= 999 ? '∞' : meta.limit;
+  if (meta.isPro) {
+    document.getElementById('plan-badge').textContent = 'PRO';
+    document.getElementById('plan-badge').className = 'plan-badge pro';
+  }
+}
+
+function copyResult() {
+  navigator.clipboard.writeText(currentShareText).then(() => {
+    const btn = event.target;
+    btn.textContent = 'COPIED!';
+    setTimeout(() => btn.textContent = 'COPY', 2000);
+  });
+}
+
+function shareX() {
+  // 画像を先にダウンロードしてからXに投稿するよう案内
+  if (window._lastChar) {
+    const out = generateShareCanvas(window._lastChar);
+    const a = document.createElement('a');
+    a.download = 'me-character.png';
+    a.href = out.toDataURL('image/png');
+    a.click();
+  }
+  // 少し待ってからX投稿画面を開く
+  setTimeout(() => {
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(currentShareText), '_blank');
+  }, 600);
+}
+
+function showUpgradeModal() { document.getElementById('modal-bg').classList.add('show'); }
+function hideUpgradeModal() { document.getElementById('modal-bg').classList.remove('show'); }
+function selectPlan(plan) {
+  selectedPlan = plan;
+  document.getElementById('plan-pro').classList.toggle('selected', plan === 'pro');
+  document.getElementById('plan-premium').classList.toggle('selected', plan === 'premium');
+}
+function goToStripe() {
+  const links = { pro: 'https://buy.stripe.com/xxxxxxxx', premium: 'https://buy.stripe.com/yyyyyyyy' };
+  const url = links[selectedPlan];
+  if (url.includes('xxx') || url.includes('yyy')) {
+    alert('Stripeの決済リンクを設定してください。');
+    return;
+  }
+  window.open(url, '_blank');
+}
+function savePlan() {
+  const token = document.getElementById('pro-token').value.trim();
+  if (token) localStorage.setItem('mychar_pro_token', token);
+}
+let loadingTimer = null;
+function showLoading(show) {
+  document.getElementById('loading').classList.toggle('show', show);
+  if (show) {
+    startLoadingAnimation();
+  } else {
+    stopLoadingAnimation();
+  }
+}
+
+function startLoadingAnimation() {
+  const phases = [
+    { pct: 8,  phase: '診断結果を分析しています' },
+    { pct: 22, phase: 'キャラクターの個性を統合中' },
+    { pct: 40, phase: 'AIがデザインを生成しています' },
+    { pct: 58, phase: 'カラーパレットを決定中' },
+    { pct: 72, phase: '性格と相性を計算しています' },
+    { pct: 85, phase: 'キャラクターを仕上げています' },
+    { pct: 94, phase: 'もうすぐ完成します' },
+  ];
+
+  let phaseIdx = 0;
+  let dots = 1;
+  let currentPct = 0;
+
+  const bar = document.getElementById('progress-bar');
+  const pct = document.getElementById('progress-pct');
+  const label = document.getElementById('loading-label');
+  const phase = document.getElementById('loading-phase');
+
+  // リセット
+  bar.style.width = '0%';
+  bar.style.transition = 'none';
+  pct.textContent = '0%';
+  label.textContent = '生成中.';
+  phase.textContent = phases[0].phase;
+
+  // ドット点滅（500ms）
+  const dotTimer = setInterval(() => {
+    dots = dots >= 3 ? 1 : dots + 1;
+    label.textContent = '生成中' + '.'.repeat(dots);
+  }, 500);
+
+  // フェーズ進行（2秒ごと）
+  const phaseTimer = setInterval(() => {
+    if (phaseIdx < phases.length - 1) phaseIdx++;
+    const target = phases[phaseIdx].pct;
+    phase.textContent = phases[phaseIdx].phase;
+
+    // バーをスムーズに進める
+    bar.style.transition = 'width 1.8s cubic-bezier(.16,1,.3,1)';
+    bar.style.width = target + '%';
+
+    // 数値カウントアップ
+    const from = currentPct;
+    const to = target;
+    const duration = 1800;
+    const start = performance.now();
+    const countUp = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = Math.round(from + (to - from) * eased);
+      pct.textContent = val + '%';
+      if (progress < 1) requestAnimationFrame(countUp);
+    };
+    requestAnimationFrame(countUp);
+    currentPct = to;
+  }, 2000);
+
+  loadingTimer = { dotTimer, phaseTimer };
+}
+
+function stopLoadingAnimation() {
+  if (loadingTimer) {
+    clearInterval(loadingTimer.dotTimer);
+    clearInterval(loadingTimer.phaseTimer);
+    loadingTimer = null;
+  }
+  // 完了演出：100%まで一気に
+  const bar = document.getElementById('progress-bar');
+  const pct = document.getElementById('progress-pct');
+  const label = document.getElementById('loading-label');
+  const phase = document.getElementById('loading-phase');
+  if (bar) {
+    bar.style.transition = 'width .4s ease';
+    bar.style.width = '100%';
+    pct.textContent = '100%';
+    label.textContent = '生成完了!';
+    phase.textContent = 'キャラクターが生まれました';
+  }
+}
+function showError(msg) { const el = document.getElementById('error-msg'); el.innerHTML = msg; el.classList.add('show'); }
+function hideError() { document.getElementById('error-msg').classList.remove('show'); }
+</script>
+</body>
+</html>
